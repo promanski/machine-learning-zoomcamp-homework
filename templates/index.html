@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wycena mieszkania - powiat chrzanowski</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 560px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a3a5c 0%, #3a7ca5 100%);
+            color: #fff;
+            padding: 28px 32px;
+        }
+        .header h1 { font-size: 22px; margin-bottom: 6px; }
+        .header p { font-size: 13px; opacity: 0.85; }
+        .body { padding: 28px 32px; }
+        .field { margin-bottom: 18px; }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a3a5c;
+            margin-bottom: 6px;
+        }
+        input, select {
+            width: 100%;
+            padding: 11px 14px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+            background: #fafbfc;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3a7ca5;
+            background: #fff;
+        }
+        .row { display: flex; gap: 14px; }
+        .row .field { flex: 1; }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1a3a5c 0%, #3a7ca5 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            margin-top: 6px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(58,124,165,0.4); }
+        button:disabled { opacity: 0.6; cursor: wait; transform: none; }
+        .result {
+            margin-top: 22px;
+            padding: 22px;
+            background: linear-gradient(135deg, #eef6fb 0%, #e3f0f9 100%);
+            border-radius: 12px;
+            border-left: 5px solid #3a7ca5;
+            display: none;
+        }
+        .result.show { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        .result .price {
+            font-size: 34px;
+            font-weight: 700;
+            color: #1a3a5c;
+            margin-bottom: 4px;
+        }
+        .result .per-m2 { font-size: 14px; color: #555; margin-bottom: 12px; }
+        .result .range {
+            font-size: 13px;
+            color: #666;
+            padding-top: 12px;
+            border-top: 1px solid #cfe0ec;
+        }
+        .trend {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid #cfe0ec;
+        }
+        .trend h3 {
+            font-size: 13px;
+            color: #1a3a5c;
+            margin-bottom: 10px;
+        }
+        .trend-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 7px;
+            font-size: 13px;
+        }
+        .trend-row .yr { width: 42px; font-weight: 600; color: #3a7ca5; }
+        .trend-row .bar-wrap { flex: 1; background: #dce8f2; border-radius: 4px; height: 18px; overflow: hidden; }
+        .trend-row .bar { height: 100%; background: linear-gradient(90deg, #3a7ca5, #1a3a5c); border-radius: 4px; transition: width 0.5s; }
+        .trend-row .val { width: 110px; text-align: right; color: #1a3a5c; font-weight: 600; }
+        .trend-row.active .yr { color: #c0392b; }
+        .trend-row.active .val { color: #c0392b; }
+        .error {
+            margin-top: 18px;
+            padding: 14px;
+            background: #fdecea;
+            border-left: 5px solid #c0392b;
+            border-radius: 8px;
+            color: #c0392b;
+            font-size: 14px;
+            display: none;
+        }
+        .error.show { display: block; }
+        .stats {
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid #e0e6ed;
+            font-size: 12px;
+            color: #888;
+            line-height: 1.7;
+        }
+        .stats b { color: #3a7ca5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 Wycena mieszkania</h1>
+            <p>Powiat chrzanowski &middot; model uczenia maszynowego</p>
+        </div>
+        <div class="body">
+            <form id="form">
+                <div class="field">
+                    <label for="miasto">Miasto</label>
+                    <select id="miasto" required>
+                        {% for c in cities %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if streets %}
+                <div class="field">
+                    <label for="ulica">Ulica (opcjonalnie - dokładniejszy model)</label>
+                    <select id="ulica">
+                        <option value="">— model ogólny (cały powiat) —</option>
+                        {% for s in streets %}
+                        <option value="{{ s }}">{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="row">
+                    <div class="field">
+                        <label for="powierzchnia">Powierzchnia [m²]</label>
+                        <input type="number" id="powierzchnia" value="50"
+                               min="15" max="200" step="0.1" required>
+                    </div>
+                    <div class="field">
+                        <label for="izby">Liczba izb</label>
+                        <input type="number" id="izby" value="3"
+                               min="1" max="10" step="1" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="kondygnacja">Kondygnacja (piętro)</label>
+                    <input type="number" id="kondygnacja" value="2"
+                           min="-1" max="15" step="1" required>
+                </div>
+                <button type="submit" id="btn">Wyceń mieszkanie</button>
+            </form>
+
+            <div class="result" id="result">
+                <div class="price" id="price">—</div>
+                <div class="per-m2" id="perM2">—</div>
+                <div class="range" id="range">—</div>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="stats">
+                Model: Hist Gradient Boosting &middot;
+                <b>{{ stats.n }}</b> transakcji &middot;
+                RMSE(test): <b>{{ stats.rmse_test }}</b><br>
+                Zakres cen w danych: <b>{{ "{:,}".format(stats.cena_min).replace(",", " ") }}</b> –
+                <b>{{ "{:,}".format(stats.cena_max).replace(",", " ") }}</b> zł &middot;
+                średnia <b>{{ stats.cena_sr_m2 }}</b> zł/m²
+                {% if street_stats %}
+                <br>Model ulic (Trzebińska + 5): RMSE(test) <b>{{ street_stats.rmse_test }}</b>
+                ({{ "{:,}".format(street_stats.rmse_test_pln).replace(",", " ") }} zł),
+                trening na <b>{{ street_stats.n_train }}</b> transakcjach
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('form');
+        const btn = document.getElementById('btn');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+
+        const fmt = n => n.toLocaleString('pl-PL') + ' zł';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btn.disabled = true;
+            btn.textContent = 'Liczę...';
+            result.classList.remove('show');
+            error.classList.remove('show');
+
+            const payload = {
+                miasto: document.getElementById('miasto').value,
+                powierzchnia: document.getElementById('powierzchnia').value,
+                izby: document.getElementById('izby').value,
+                kondygnacja: document.getElementById('kondygnacja').value,
+                ulica: document.getElementById('ulica') ? document.getElementById('ulica').value : '',
+            };
+
+            try {
+                const res = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    error.textContent = data.error || 'Wystąpił błąd';
+                    error.classList.add('show');
+                } else {
+                    document.getElementById('price').textContent = fmt(data.cena);
+                    document.getElementById('perM2').textContent =
+                        fmt(data.cena_m2) + ' za m²';
+                    document.getElementById('range').textContent =
+                        'Przewidywany zakres: ' + fmt(data.cena_min) +
+                        ' – ' + fmt(data.cena_max) +
+                        '  •  model: ' + data.model;
+                    result.classList.add('show');
+                }
+            } catch (err) {
+                error.textContent = 'Błąd połączenia z serwerem';
+                error.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Wyceń mieszkanie';
+            }
+        });
+    </script>
+</body>
+</html>

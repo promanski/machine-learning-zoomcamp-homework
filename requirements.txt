@@ -1,0 +1,10 @@
+# Wymagania do projektu wyceny mieszkań (RCN 1203 - powiat chrzanowski)
+# Python 3.11+ (testowane na 3.14)
+
+numpy>=2.0
+pandas>=2.2
+scikit-learn>=1.5
+catboost>=1.2
+optuna>=4.0
+matplotlib>=3.8
+flask>=3.0
